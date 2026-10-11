@@ -1,0 +1,32 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Knight from '../components/Knight.astro';
+---
+
+<BaseLayout
+  title="404 - No square here"
+  description="The page you requested does not exist on EloForge."
+  canonical="/404"
+  noindex
+>
+
+  <section class="errormain wrap-narrow">
+    <div class="glyph">♞</div>
+    <h1 style="margin-top:18px;">No square here.</h1>
+    <p class="lede" style="max-width:32em; margin:0 auto 28px;">
+      The knight has wandered off the board - this address is not part of EloForge.
+      Return to the first rank and pick an instrument.
+    </p>
+    <div class="hero__actions" style="justify-content:center;">
+      <a class="btn" href="/">Back to the home board</a>
+      <a class="btn btn--ghost" href="/elo-calculator">Elo calculator</a>
+    </div>
+    <p class="figure-small" style="margin-top:34px; color:var(--ink-3);">
+      <Knight size={16} style="display:inline-block; vertical-align:-3px; color:var(--wood);" />
+      &nbsp;Also in play: <a href="/expected-score">expected score</a> ·
+      <a href="/performance-rating">performance rating</a> ·
+      <a href="/rating-planner">goal planner</a> · <a href="/faq">FAQ</a>
+    </p>
+  </section>
+
+</BaseLayout>

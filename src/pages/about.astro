@@ -1,0 +1,143 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Knight from '../components/Knight.astro';
+import { sources } from '../lib/content';
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'AboutPage',
+  name: 'About EloForge - methodology & sources',
+  url: new URL('/about', Astro.site).href,
+  description: 'How EloForge computes chess ratings: the FIDE formulas, tables and conventions used, and the primary sources behind every calculator.',
+};
+---
+
+<BaseLayout
+  title="About - Methodology & Sources Behind Every Calculator"
+  description="How EloForge computes chess ratings: FIDE Tables 8.1.1/8.1.2, the K-factor rules of article 8.3.3, the 400-point rule, performance rating methods - and the primary sources every formula is checked against."
+  canonical="/about"
+  jsonLd={[jsonLd]}
+>
+
+  <nav class="crumbs wrap" aria-label="Breadcrumb">
+    <ol>
+      <li><a href="/">EloForge</a></li>
+      <li><span aria-current="page">About &amp; Sources</span></li>
+    </ol>
+  </nav>
+
+  <header class="pagehead wrap-narrow">
+    <p class="kicker">Methodology</p>
+    <h1>Every number, accounted for.</h1>
+    <p class="lede">
+      EloForge is a set of four calculators that implement the FIDE rating system exactly as
+      published - same tables, same K rules, same rounding. This page documents what we
+      compute and where each rule comes from.
+    </p>
+  </header>
+
+  <section class="section wrap-narrow" style="padding-top:0;">
+    <div class="prose">
+      <h2>What we compute</h2>
+      <p class="dropcap">
+        The engine behind all four tools is the pair of tables FIDE publishes with its Rating
+        Regulations. <strong>Table 8.1.2</strong> maps a rating difference to an expected
+        score in 0.01 steps - D = 0 gives 0.50, D = 200 gives 0.76, D = 400 gives 0.92, and
+        differences above 735 give 1.00. <strong>Table 8.1.1</strong> is its mirror: a
+        percentage score to a rating difference, from 0 at 50% up to 800 at 100%.
+        We read both tables literally - no interpolation, no smoothing.
+      </p>
+      <p>
+        Where a continuous value is useful (the curve on the expected-score page, for
+        instance) we also compute the exact logistic function
+        E = 1/(1 + 10<sup>(R<sub>opp</sub>−R)/400</sup>) that underlies the whole Elo
+        family<span class="cite">[<a href="#w1">W1</a>]</span>. The two never differ by more
+        than rounding: at D = 400 the table says 0.92, the curve 0.909.
+      </p>
+
+      <h2>Rules we implement</h2>
+      <ul>
+        <li>
+          <strong>K-factor (art. 8.3.3).</strong> K = 40 for a player new to the list until
+          events with at least 30 rated games; K = 40 until the end of the year of the 18th
+          birthday while rated under 2300; K = 20 below 2400; K = 10 once 2400 is published - 
+          permanently. We also honour the K × games ≤ 700 cap in the auto-K explanation.
+        </li>
+        <li>
+          <strong>400-point rule (art. 8.3.1).</strong> For players rated below 2650, a
+          difference beyond 400 counts as exactly 400 (as amended from 1 October 2025);
+          2650+ ratings use the true difference.
+        </li>
+        <li>
+          <strong>Rating change (art. 8.3.2–8.3.4).</strong> Per game, ΔR = K × (S − E).
+          For a rating period, FIDE sums (S − E) over the period's games, multiplies by K,
+          and rounds to the nearest whole number with 0.5 away from zero. Our
+          "official-style" totals follow this; sequential projections are labelled as such.
+        </li>
+        <li>
+          <strong>Performance rating.</strong> TPR = Ra + dp (FIDE method, art. 8.2 uses the
+          same machinery for initial ratings, including the two hypothetical 1800 draws and
+          the 2200 cap); the alternative "rating + score-based delta" anchors the same dp to
+          your own rating; the linear "algorithm of 400" is shown for
+          reference<span class="cite">[<a href="#w1">W1</a>]</span>.
+        </li>
+        <li>
+          <strong>Norms context (Title Regulations art. 1.4).</strong> GM norm: 2600+
+          performance over 9+ games vs opponents averaging ≥ 2380; IM: 2450+ vs ≥ 2230; with
+          the titled-opponent and federation mix as stated<span class="cite">[<a href="#f2">F2</a>]</span>.
+          We show these as benchmarks - awarding norms is FIDE's job, not ours.
+        </li>
+      </ul>
+
+      <h2>What we deliberately do not do</h2>
+      <p>
+        We do not estimate win/draw/loss splits (Elo pins the expected total, not the shape),
+        we do not fetch or store any personal data - every calculation runs locally in your
+        browser - and we do not pretend a simulation is an official rating: FIDE settles
+        ratings once per period, by list, with the arbiters' reports in hand.
+      </p>
+    </div>
+
+    <div class="plate">
+      <p class="plate__tag">Verified against the sources below</p>
+      <p class="equation" style="font-size:1.1rem;">
+        2000 v 2000, W, K=20 → +10 &nbsp;·&nbsp; 2400 v 2000, W, K=10 → +0.8 &nbsp;·&nbsp; E(2000 v 2200) = 0.240
+      </p>
+      <p class="plate__note">
+        The three checks from our test suite (26 tests, run on every build). The +0.8 result
+        is the giveaway that a calculator reads FIDE's table rather than the raw curve.
+      </p>
+    </div>
+
+    <h2 style="margin-top:44px;">Sources</h2>
+    <p>
+      Primary references, verified October 2026. If FIDE amends the regulations, these pages
+      change first - our tables follow.
+    </p>
+    <ul class="sourcelist">
+      <li data-no="F1" id="f1">
+        <a href={sources[0].url} rel="noopener" target="_blank">{sources[0].title}</a>
+        <span class="figure-small" style="display:block; margin-top:3px;">{sources[0].note}</span>
+      </li>
+      <li data-no="F2" id="f2">
+        <a href={sources[1].url} rel="noopener" target="_blank">{sources[1].title}</a>
+        <span class="figure-small" style="display:block; margin-top:3px;">{sources[1].note}</span>
+      </li>
+      <li data-no="W1" id="w1">
+        <a href={sources[2].url} rel="noopener" target="_blank">{sources[2].title}</a>
+        <span class="figure-small" style="display:block; margin-top:3px;">{sources[2].note}</span>
+      </li>
+    </ul>
+
+    <div class="note" style="margin-top:36px;">
+      <span class="note__tag">Independence</span>
+      <p>
+        <Knight size={20} style="display:inline-block; vertical-align:-4px; color:var(--wood);" />
+        &nbsp;EloForge is an independent tool, not affiliated with FIDE or any federation.
+        It is provided free, without accounts or tracking; if a number here ever disagrees
+        with the handbook, trust the handbook - then tell us so we can fix it.
+      </p>
+    </div>
+  </section>
+
+</BaseLayout>

@@ -1,0 +1,70 @@
+---
+/**
+ * Print-style chessboard diagram: 8×8, rank/file coordinates, optional
+ * knight standing on a square. Pure SVG, editorial palette.
+ */
+interface Props {
+  size?: number;
+  knightSquare?: string; // e.g. "d5"
+  showCoords?: boolean;
+}
+const { size = 420, knightSquare, showCoords = true } = Astro.props;
+
+const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+const light = '#f2ecdd';
+const dark = '#c8a678';
+const ink = '#6f675c';
+
+// Board is size × size; coordinates live in a margin around it.
+const margin = showCoords ? 22 : 0;
+const board = size;
+const total = board + margin * 2;
+const sq = board / 8;
+
+function squareCenter(square: string): { x: number; y: number; scale: number } {
+  const file = files.indexOf(square[0]);
+  const rank = Number(square[1]) - 1;
+  const x = margin + file * sq + sq / 2;
+  const y = margin + (7 - rank) * sq + sq / 2;
+  return { x, y, scale: (sq / 64) * 1.72 };
+}
+---
+
+<svg
+  width={total}
+  height={total}
+  viewBox={`0 0 ${total} ${total}`}
+  role="img"
+  aria-label="Chessboard diagram"
+>
+  <rect x={margin} y={margin} width={board} height={board} fill={light}></rect>
+  {Array.from({ length: 64 }, (_, i) => {
+    const col = i % 8;
+    const row = Math.floor(i / 8);
+    if ((col + row) % 2 === 0) return null;
+    return <rect x={margin + col * sq} y={margin + row * sq} width={sq} height={sq} fill={dark} opacity="0.82"></rect>;
+  })}
+  <rect x={margin} y={margin} width={board} height={board} fill="none" stroke="#1c1a17" stroke-width="1.4"></rect>
+
+  {showCoords && (
+    <g fill={ink} font-family="Georgia, serif" font-size={margin * 0.62} text-anchor="middle">
+      {files.map((f, i) => (
+        <text x={margin + i * sq + sq / 2} y={total - margin * 0.32}>{f}</text>
+      ))}
+      {Array.from({ length: 8 }, (_, r) => (
+        <text x={margin * 0.42} y={margin + r * sq + sq / 2 + margin * 0.24}>{8 - r}</text>
+      ))}
+    </g>
+  )}
+
+  {knightSquare && (
+    <text
+      x={squareCenter(knightSquare).x}
+      y={squareCenter(knightSquare).y - 15}
+      text-anchor="middle"
+      dominant-baseline="central"
+      font-size={sq * 1.18}
+      font-family="'Segoe UI Symbol','Apple Symbols','Noto Sans Symbols 2','DejaVu Sans',Georgia,serif"
+      fill="#1c1a17">♞</text>
+  )}
+</svg>

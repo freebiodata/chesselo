@@ -1,0 +1,49 @@
+---
+const year = new Date().getFullYear();
+---
+
+<footer class="footer">
+  <div class="footer__board boardfield" aria-hidden="true"></div>
+  <div class="wrap">
+    <div class="footer__cols">
+      <div>
+        <h4>EloForge</h4>
+        <p class="footer__about">
+          Free chess rating calculators built on the official FIDE formulas - rating change,
+          expected score, tournament performance and rating goals. Everything runs in your
+          browser; nothing is stored or sent anywhere.
+        </p>
+      </div>
+      <div>
+        <h4>Calculators</h4>
+        <ul>
+          <li><a href="/elo-calculator">Elo change calculator</a></li>
+          <li><a href="/expected-score">Expected score calculator</a></li>
+          <li><a href="/performance-rating">Performance rating</a></li>
+          <li><a href="/rating-planner">Rating goal planner</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Learn</h4>
+        <ul>
+          <li><a href="/faq">Rating FAQ</a></li>
+          <li><a href="/about">Methodology &amp; sources</a></li>
+          <li><a href="/#how-ratings-work">How FIDE ratings work</a></li>
+          <li><a href="/faq#k-factor">What K-factor am I?</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Standards</h4>
+        <ul>
+          <li><a href="https://handbook.fide.com/chapter/B022024" rel="noopener" target="_blank">FIDE Rating Regulations</a></li>
+          <li><a href="https://handbook.fide.com/chapter/B012024" rel="noopener" target="_blank">FIDE Title Regulations</a></li>
+          <li><a href="https://en.wikipedia.org/wiki/Elo_rating_system" rel="noopener" target="_blank">Elo rating system (Wikipedia)</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer__fineprint">
+      <span>© {year} EloForge · chesselo.top</span>
+      <span>Independent tool - not affiliated with FIDE or USCF. Official ratings come only from rated play.</span>
+    </div>
+  </div>
+</footer>

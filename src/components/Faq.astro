@@ -1,0 +1,22 @@
+---
+/** FAQ accordion. `items` = [{ id, q, a (HTML string) }] */
+interface Item {
+  id: string;
+  q: string;
+  a: string;
+}
+interface Props {
+  items: Item[];
+  open?: string; // id of the item open by default
+}
+const { items, open } = Astro.props;
+---
+
+<div class="faq">
+  {items.map((item) => (
+    <details id={item.id} open={open === item.id}>
+      <summary>{item.q}</summary>
+      <div class="faq__a" set:html={item.a} />
+    </details>
+  ))}
+</div>

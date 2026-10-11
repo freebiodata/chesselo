@@ -1,0 +1,40 @@
+---
+import Knight from './Knight.astro';
+
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
+
+const links = [
+  { href: '/elo-calculator', label: 'Elo Change' },
+  { href: '/expected-score', label: 'Expected Score' },
+  { href: '/performance-rating', label: 'Performance' },
+  { href: '/rating-planner', label: 'Goal Planner' },
+  { href: '/faq', label: 'FAQ' },
+  { href: '/about', label: 'About' },
+];
+---
+
+<header class="masthead">
+  <div class="masthead__topline">
+    <div class="wrap">
+      <span>chesselo.top</span>
+      <span>Free · No sign-up · FIDE-standard formulas</span>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="masthead__main">
+      <a class="brand" href="/">
+        <span class="brand__mark"><Knight size={40} /></span>
+        <span>
+          <span class="brand__word">Elo<em>Forge</em></span>
+          <span class="brand__tag">Chess rating calculators</span>
+        </span>
+      </a>
+      <nav class="nav" aria-label="Main">
+        {links.map((l) => (
+          <a href={l.href} aria-current={isCurrent(l.href) ? 'page' : undefined}>{l.label}</a>
+        ))}
+      </nav>
+    </div>
+  </div>
+</header>

@@ -1,0 +1,359 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebApplication',
+    name: 'EloForge Rating Goal Planner',
+    url: new URL('/rating-planner', Astro.site).href,
+    applicationCategory: 'UtilitiesApplication',
+    operatingSystem: 'Any (web browser)',
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    description: 'Chess rating goal planner: how many wins to reach 1600, 2000 or any target rating? Simulate the climb game by game against your typical opposition, with auto K-factor and pace comparisons.',
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'EloForge', item: Astro.site?.href },
+      { '@type': 'ListItem', position: 2, name: 'Rating Goal Planner', item: new URL('/rating-planner', Astro.site).href },
+    ],
+  },
+];
+---
+
+<BaseLayout
+  title="Chess Rating Goal Planner - How Many Wins to Reach Your Target"
+  description="Rating goal planner: enter your current rating, a target and your typical opponents to see how many games it takes - consecutive wins or a realistic scoring pace, with FIDE K-factor rules simulated round by round."
+  canonical="/rating-planner"
+  jsonLd={jsonLd}
+>
+
+  <nav class="crumbs wrap" aria-label="Breadcrumb">
+    <ol>
+      <li><a href="/">EloForge</a></li>
+      <li><span aria-current="page">Rating Goal Planner</span></li>
+    </ol>
+  </nav>
+
+  <header class="pagehead wrap">
+    <p class="kicker">Instrument № 4</p>
+    <h1>Rating Goal Planner</h1>
+    <p class="lede">
+      "How many wins until I reach 1600?" Simulate the climb round by round - every win pays a
+      little less as you rise, and the planner prices that in automatically.
+    </p>
+  </header>
+
+  <div class="wrap">
+    <div class="tool">
+      <!-- ============ FORM ============ -->
+      <form class="tool__form" id="calc-form" novalidate>
+        <div class="fieldrow">
+          <div class="field">
+            <label for="start">Current rating</label>
+            <input type="number" id="start" value="1520" min="100" max="2999" step="1" inputmode="numeric" />
+          </div>
+          <div class="field">
+            <label for="target">Goal rating</label>
+            <input type="number" id="target" value="1600" min="101" max="3000" step="1" inputmode="numeric" />
+          </div>
+        </div>
+
+        <div class="fieldrow">
+          <div class="field">
+            <label for="opponent">Typical opponent</label>
+            <input type="number" id="opponent" value="1550" min="100" max="3000" step="1" inputmode="numeric" />
+          </div>
+          <div class="field">
+            <label for="kselect">K-factor</label>
+            <select id="kselect">
+              <option value="auto" selected>Auto (by rating, games &amp; age)</option>
+              <option value="40">K = 40 (new player / junior)</option>
+              <option value="20">K = 20 (established, under 2400)</option>
+              <option value="10">K = 10 (has reached 2400)</option>
+            </select>
+          </div>
+        </div>
+
+        <fieldset class="field" id="kctx" style="border:1px solid var(--line-soft); padding:14px 16px 6px; margin:0 0 18px;">
+          <legend class="fieldlegend" style="display:inline; padding:0 6px;">Auto-K - your situation</legend>
+          <div class="fieldrow">
+            <div class="field" style="margin-bottom:12px;">
+              <label for="games-played">Rated games played <span class="hint">so far</span></label>
+              <input type="number" id="games-played" value="30" min="0" max="2000" step="1" inputmode="numeric" />
+            </div>
+            <div style="padding-top:26px;">
+              <label class="check"><input type="checkbox" id="under18" /> Under 18 (until year of 18th birthday)</label>
+              <label class="check"><input type="checkbox" id="ever2400" /> Published rating has reached 2400</label>
+            </div>
+          </div>
+          <p class="figure-small" id="kctx-note" style="margin:0 0 10px;"></p>
+        </fieldset>
+
+        <div class="field">
+          <label id="lbl-pace">Scoring pace</label>
+          <div class="segmented" role="radiogroup" aria-labelledby="lbl-pace">
+            <label><input type="radio" name="pace" value="win" checked /><span>Consecutive wins</span></label>
+            <label><input type="radio" name="pace" value="rate" /><span>Custom rate</span></label>
+          </div>
+        </div>
+
+        <div class="field" id="ratefield" style="display:none;">
+          <label for="rate">Expected points per game <span class="hint">0.50–0.99; wins-only = 1.00</span></label>
+          <input type="number" id="rate" value="0.75" min="0.5" max="1" step="0.01" inputmode="decimal" />
+        </div>
+
+        <p class="figure-small" role="alert" id="err" style="color:#a33c1f; min-height:1.2em; margin:8px 0 0;"></p>
+      </form>
+
+      <!-- ============ RESULTS ============ -->
+      <div class="tool__result" aria-live="polite">
+        <p class="result-sub" id="headline-kicker">Consecutive wins needed</p>
+        <div class="result-headline">
+          <span class="result-big" id="big-games">9</span>
+          <span class="result-big" style="font-size:1.1rem; color:var(--ink-3);">games</span>
+        </div>
+        <p class="figure-small" id="headline-note"></p>
+
+        <dl class="statgrid statgrid--three">
+          <div class="stat"><dt>First win pays</dt><dd id="stat-first">+9.6</dd></div>
+          <div class="stat"><dt>Last win pays</dt><dd id="stat-last">+8.0</dd></div>
+          <div class="stat"><dt>Rating reached</dt><dd id="stat-final">1603</dd></div>
+        </dl>
+
+        <figure class="chart-plate">
+          <div id="chart"></div>
+          <figcaption id="chart-caption">Projected rating, game by game.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PACE TABLE ============ -->
+  <section class="section wrap-narrow">
+    <p class="kicker">Same climb, different paces</p>
+    <h2>What a scoring rate costs you.</h2>
+    <p class="lede" style="max-width:38em;">
+      Straight wins are the ceiling. Compare how the same goal stretches under realistic
+      scoring rates - every rate below your expected score means no progress at all.
+    </p>
+    <div class="datatable-wrap">
+      <table class="datatable">
+        <caption id="pace-caption">Games needed from 1520 to 1600 vs 1550 opponents</caption>
+        <thead>
+          <tr>
+            <th scope="col">Pace</th>
+            <th scope="col">Points / game</th>
+            <th scope="col">Games to goal</th>
+            <th scope="col">Progress per game</th>
+          </tr>
+        </thead>
+        <tbody id="pace-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ ARTICLE ============ -->
+  <section class="section rule-top wrap-narrow">
+    <p class="kicker">The arithmetic</p>
+    <h2>Why each win pays less than the last.</h2>
+    <div class="prose">
+      <p class="dropcap">
+        A win against an equal opponent at K = 20 is worth +10. But the moment you climb, the
+        same opponent becomes easier in the system's eyes: after +50 points your expected
+        score against them rises from 0.50 to about 0.57, and the next win pays only +8.6.
+        This is the Elo system's built-in gravity - the planner simulates it game by game so
+        the total is honest, not a naive ×10-per-win multiplication.
+      </p>
+      <p>
+        The simulation re-rates you after every game and re-reads your K-factor along the
+        way<span class="cite">[<a href="/about#f1">F1</a>]</span>: cross 2400 (with K = 10
+        following permanently), pass 30 career games, or turn 19, and the throttle changes
+        under you. In reality FIDE settles monthly, so treat the game count as a projection,
+        not a schedule.
+      </p>
+    </div>
+
+    <div class="plate">
+      <p class="plate__tag">Per-game gain against a fixed opponent</p>
+      <p class="equation">Δ<i>R</i><sub>win</sub> = <i>K</i> × (1 − <i>E</i>), &nbsp; <i>E</i> rising with every win</p>
+      <p class="plate__note">
+        1600-beating-1600 at K = 20: +10, +9.8, +9.6, … - eleven straight wins to go from
+        1600 to 1700, not ten.
+      </p>
+    </div>
+
+    <div class="note">
+      <span class="note__tag">Reality check</span>
+      <p>
+        A scoring pace is itself a claim: sustaining 0.75 against 1600s <em>means</em> you are
+        already stronger than 1600. If the plan says 40 games, the honest reading is "my true
+        level is somewhere above my rating" - the fastest route is simply playing often.
+      </p>
+    </div>
+
+    <div class="note">
+      <span class="note__tag">Related</span>
+      <p>
+        Single games: <a href="/elo-calculator">Elo change calculator</a> ·
+        tournament retrospectives: <a href="/performance-rating">Performance rating calculator</a> ·
+        the model underneath: <a href="/expected-score">Expected score calculator</a>
+      </p>
+    </div>
+  </section>
+
+  <script>
+    import { autoK, playGame, expectedScoreFideTable, fmtDelta, type KFactor } from '../lib/fide';
+
+    const $ = (id: string) => document.getElementById(id) as HTMLInputElement;
+    const MAXG = 3000;
+
+    interface Sim { steps: { game: number; rating: number; delta: number; k: KFactor }[]; reached: boolean; stagnant: boolean; final: number }
+
+    function simulate(start: number, target: number, opp: number, kMode: string, rate: number, games0: number, under18: boolean, ever2400: boolean, max = MAXG): Sim {
+      const steps: Sim['steps'] = [];
+      let rating = start;
+      let played = games0;
+      let ever = ever2400 || start >= 2400;
+      let stagnant = false;
+      while (rating < target && steps.length < max) {
+        const k: KFactor = kMode === 'auto' ? autoK({ ratedGamesPlayed: played, rating, under18, everReached2400: ever }) : (Number(kMode) as KFactor);
+        const g = playGame({ rating, opponent: opp, score: rate as 1, k, cap400: true, method: 'fide-table' });
+        if (rate < 1 && g.delta <= 0) { stagnant = true; break; }
+        rating += g.delta;
+        played += 1;
+        ever = ever || rating >= 2400;
+        steps.push({ game: steps.length + 1, rating, delta: g.delta, k });
+      }
+      return { steps, reached: rating >= target, stagnant, final: rating };
+    }
+
+    function renderChart(sim: Sim, start: number, target: number) {
+      const n = sim.steps.length;
+      if (!n) {
+        $('chart').innerHTML = '<p class="figure-small" style="text-align:center; padding:40px 0;">No games needed - or no progress possible at this pace.</p>';
+        return;
+      }
+      const W = 640, H = 280, L = 52, R = 14, T = 16, B = 34;
+      const yLo = Math.min(start, sim.final) - 15;
+      const yHi = Math.max(target, sim.final) + 15;
+      const x = (g: number) => L + (g / n) * (W - L - R);
+      const y = (r: number) => T + (1 - (r - yLo) / (yHi - yLo)) * (H - T - B);
+
+      let path = `M${x(0)} ${y(start)}`;
+      sim.steps.forEach((s) => { path += `L${x(s.game).toFixed(1)} ${y(s.rating).toFixed(1)}`; });
+
+      const yTicks = [start, Math.round((start + target) / 2), target].map((r) =>
+        `<line x1="${L}" y1="${y(r)}" x2="${W - R}" y2="${y(r)}" stroke="rgba(28,26,23,.1)"/>` +
+        `<text x="${L - 8}" y="${y(r) + 4}" text-anchor="end" font-size="11" fill="#6f675c" font-family="Georgia,serif">${r}</text>`).join('');
+      const xTicks = [0, Math.round(n / 2), n].map((g) =>
+        `<text x="${x(g)}" y="${H - B + 18}" text-anchor="middle" font-size="11" fill="#6f675c" font-family="Georgia,serif">${g}</text>` +
+        `<line x1="${x(g)}" y1="${H - B}" x2="${x(g)}" y2="${H - B + 5}" stroke="#6f675c"/>`).join('');
+      const kChanges = [...new Set(sim.steps.map((s) => s.k))];
+
+      $('chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Rating progression chart">
+        ${yTicks}
+        <line x1="${L}" y1="${y(target)}" x2="${W - R}" y2="${y(target)}" stroke="#8a5a33" stroke-dasharray="5 4" stroke-width="1.4"/>
+        <path d="${path}" fill="none" stroke="#1c1a17" stroke-width="2.2"/>
+        <circle cx="${x(n)}" cy="${y(sim.steps[n - 1].rating)}" r="5" fill="#8a5a33" stroke="#f7f3ea" stroke-width="2"/>
+        ${xTicks}
+        <line x1="${L}" y1="${T}" x2="${L}" y2="${H - B}" stroke="#6f675c"/>
+        <line x1="${L}" y1="${H - B}" x2="${W - R}" y2="${H - B}" stroke="#6f675c"/>
+      </svg>`;
+      $('chart-caption').textContent = `Projected rating over ${n} games (K path: ${kChanges.join(' → ')}). Dashed line: goal ${target}.`;
+    }
+
+    function update() {
+      const err = $('err');
+      const start = Math.round(Number($('start').value));
+      const target = Math.round(Number($('target').value));
+      const opp = Math.round(Number($('opponent').value));
+      const kMode = $('kselect').value;
+      const games0 = Math.max(0, Math.round(Number($('games-played').value) || 0));
+      const under18 = $('under18').checked;
+      const ever2400 = $('ever2400').checked;
+      const pace = (document.querySelector('input[name="pace"]:checked') as HTMLInputElement).value;
+      const rate = pace === 'win' ? 1 : Number($('rate').value);
+
+      $('kctx').style.display = kMode === 'auto' ? '' : 'none';
+      $('ratefield').style.display = pace === 'rate' ? '' : 'none';
+
+      const inRange = (v: number) => Number.isFinite(v) && v >= 100 && v <= 3000;
+      if (!inRange(start) || !inRange(target) || !inRange(opp)) { err.textContent = 'All three ratings must be between 100 and 3000.'; return; }
+      if (target <= start) { err.textContent = 'Your goal must be higher than your current rating.'; return; }
+      if (pace === 'rate' && !(rate > 0.5 && rate <= 1)) { err.textContent = 'Points per game must be above 0.50 (equal to your expectation) and at most 1.00.'; return; }
+      err.textContent = '';
+
+      if (kMode === 'auto') {
+        const k = autoK({ ratedGamesPlayed: games0, rating: start, under18, everReached2400: ever2400 });
+        $('kctx-note').textContent = `Starting K = ${k} - ` + (
+          games0 < 30 ? 'fewer than 30 rated games.'
+          : ever2400 ? '2400+ reached; K stays 10 permanently.'
+          : under18 && start < 2300 ? 'under 18 and rated below 2300.'
+          : start < 2400 ? 'established player below 2400.' : 'rated 2400+.');
+      }
+
+      const sim = simulate(start, target, opp, kMode, rate, games0, under18, ever2400);
+      $('headline-kicker').textContent = pace === 'win' ? 'Consecutive wins needed' : `Games needed at ${rate.toFixed(2)} pts/game`;
+
+      if (sim.stagnant) {
+        const e = expectedScoreFideTable(start - opp);
+        $('big-games').textContent = '∞';
+        $('headline-note').textContent = `At ${rate.toFixed(2)} points per game you don't beat the expectation (${e.toFixed(2)}) against ${opp}s - the rating never rises. Play stronger opposition or score more.`;
+        $('stat-first').textContent = fmtDelta(sim.steps[0]?.delta ?? 0);
+        $('stat-last').textContent = '-';
+        $('stat-final').textContent = String(Math.round(sim.final));
+        renderChart(sim, start, target);
+        return;
+      }
+      if (!sim.reached) {
+        $('big-games').textContent = `>${MAXG}`;
+        $('headline-note').textContent = `Even ${MAXG} games don't close this gap at this pace - the gain per game falls as you climb. Consider stronger opposition or a higher scoring rate.`;
+        $('stat-first').textContent = fmtDelta(sim.steps[0]?.delta ?? 0);
+        $('stat-last').textContent = fmtDelta(sim.steps[sim.steps.length - 1]?.delta ?? 0);
+        $('stat-final').textContent = String(Math.round(sim.final));
+        renderChart(sim, start, target);
+        return;
+      }
+
+      const n = sim.steps.length;
+      $('big-games').textContent = String(n);
+      const years = (n / 60).toFixed(1); // ~60 rated games/year is a busy calendar
+      $('headline-note').textContent =
+        `${n} ${pace === 'win' ? 'straight wins' : 'games'} against ${opp}s take you from ${start} to ${Math.round(sim.final)} - ` +
+        `about ${years} years at a busy 60 rated games a season.`;
+      $('stat-first').textContent = fmtDelta(sim.steps[0].delta);
+      $('stat-last').textContent = fmtDelta(sim.steps[n - 1].delta);
+      $('stat-final').textContent = String(Math.round(sim.final));
+      renderChart(sim, start, target);
+
+      // pace comparison table
+      $('pace-caption').textContent = `Games needed from ${start} to ${target} vs ${opp} opponents`;
+      const body = $('pace-body');
+      body.innerHTML = '';
+      const paces: [string, number][] = [['All wins', 1], ['0.90', 0.9], ['0.85', 0.85], ['0.80', 0.8], ['0.75', 0.75], ['0.70', 0.7], ['0.65', 0.65]];
+      const e0 = expectedScoreFideTable(start - opp);
+      paces.forEach(([label, r]) => {
+        const s = simulate(start, target, opp, kMode, r, games0, under18, ever2400);
+        const tr = document.createElement('tr');
+        if (Math.abs(r - rate) < 1e-9) tr.className = 'is-current';
+        const perGame = s.reached && s.steps.length ? (s.final - start) / s.steps.length : 0;
+        tr.innerHTML = `
+          <td>${label}${Math.abs(r - rate) < 1e-9 ? ' ◂' : ''}</td>
+          <td>${r.toFixed(2)}</td>
+          <td>${s.stagnant ? ' - never (≤ expectation)' : s.reached ? s.steps.length : `> ${MAXG}`}</td>
+          <td>${s.stagnant ? '+0.0' : fmtDelta(perGame, 1)}</td>`;
+        body.appendChild(tr);
+      });
+      const breakRow = document.createElement('tr');
+      breakRow.innerHTML = `<td style="font-family:var(--sans); font-size:0.78rem; color:var(--ink-3);">Your expectation vs ${opp}s</td><td>${e0.toFixed(2)}</td><td>below this: no progress</td><td>+0.0</td>`;
+      body.appendChild(breakRow);
+    }
+
+    ['start', 'target', 'opponent', 'kselect', 'games-played', 'under18', 'ever2400', 'rate'].forEach((id) => $(id).addEventListener('input', update));
+    document.querySelectorAll('input[name="pace"]').forEach((el) => el.addEventListener('change', update));
+    update();
+  </script>
+</BaseLayout>

@@ -1,0 +1,48 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Faq from '../components/Faq.astro';
+import { faqs, faqJsonLd } from '../lib/content';
+---
+
+<BaseLayout
+  title="Chess Rating FAQ - K-Factor, Performance Rating & the Elo Formula"
+  description="How the FIDE Elo system works: what K-factor you are, how performance rating is calculated, the 400-point rule, expected score vs win probability, how many games a 100-point climb takes, and what GM/IM norms require."
+  canonical="/faq"
+  jsonLd={[faqJsonLd()]}
+>
+
+  <nav class="crumbs wrap" aria-label="Breadcrumb">
+    <ol>
+      <li><a href="/">EloForge</a></li>
+      <li><span aria-current="page">FAQ</span></li>
+    </ol>
+  </nav>
+
+  <header class="pagehead wrap-narrow">
+    <p class="kicker">The rulebook, translated</p>
+    <h1>Chess Rating FAQ</h1>
+    <p class="lede">
+      Ten questions that cover ninety percent of how FIDE ratings actually behave - answered
+      from the Rating Regulations, not folklore. Each answer links to the calculator that
+      puts it to work.
+    </p>
+  </header>
+
+  <section class="wrap-narrow" style="padding-bottom:20px;">
+    <Faq items={faqs} open="k-factor" />
+  </section>
+
+  <section class="section rule-top wrap-narrow">
+    <div class="note">
+      <span class="note__tag">Put the answers to work</span>
+      <p>
+        <a href="/elo-calculator">Elo change calculator</a> ·
+        <a href="/expected-score">Expected score calculator</a> ·
+        <a href="/performance-rating">Performance rating calculator</a> ·
+        <a href="/rating-planner">Rating goal planner</a> ·
+        <a href="/about">Methodology &amp; sources</a>
+      </p>
+    </div>
+  </section>
+
+</BaseLayout>

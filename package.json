@@ -1,0 +1,22 @@
+{
+  "name": "eloforge",
+  "version": "1.0.0",
+  "description": "EloForge - free chess rating calculators (FIDE Elo formulas): rating change, expected score, performance rating, rating goal planner.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "^3.3.0",
+    "astro": "^5.7.0"
+  },
+  "devDependencies": {
+    "vitest": "^3.1.0"
+  }
+}

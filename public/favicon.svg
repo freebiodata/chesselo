@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" fill="#8a5a33"/>
+  <rect x="3.5" y="3.5" width="57" height="57" fill="#f7f3ea" stroke="#6e4523" stroke-width="3"/>
+  <text
+    x="32"
+    y="33"
+    text-anchor="middle"
+    dominant-baseline="central"
+    font-size="46"
+    font-family="'Segoe UI Symbol','Apple Symbols','Noto Sans Symbols 2','DejaVu Sans',Georgia,serif"
+    fill="#1c1a17">♞</text>
+</svg>

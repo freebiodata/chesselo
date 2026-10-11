@@ -1,0 +1,33 @@
+---
+/**
+ * Knight mark: the classic print chess glyph (♞) - the same mark newspaper
+ * chess columns have used for a century - set in the system symbol font.
+ * Scales cleanly and matches the glyph family used across the site.
+ */
+interface Props {
+  size?: number;
+  class?: string;
+  title?: string;
+}
+const { size = 28, class: className, title = 'Knight' } = Astro.props;
+const STACK = "'Segoe UI Symbol','Apple Symbols','Noto Sans Symbols 2','DejaVu Sans',Georgia,serif";
+---
+
+<svg
+  class={className}
+  width={size}
+  height={size}
+  viewBox="0 0 64 64"
+  role="img"
+  aria-label={title}
+>
+  <title>{title}</title>
+  <text
+    x="32"
+    y="33"
+    text-anchor="middle"
+    dominant-baseline="central"
+    font-size="40"
+    font-family={STACK}
+    fill="currentColor">♞</text>
+</svg>

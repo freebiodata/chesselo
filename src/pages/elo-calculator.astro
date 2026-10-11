@@ -1,0 +1,371 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebApplication',
+    name: 'EloForge Elo Change Calculator',
+    url: new URL('/elo-calculator', Astro.site).href,
+    applicationCategory: 'UtilitiesApplication',
+    operatingSystem: 'Any (web browser)',
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    description: 'Free FIDE elo calculator: compute chess rating change per game or for a whole event, with K-factor 40/20/10 rules, the official FIDE expected-score table and the 400-point rule.',
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'EloForge', item: Astro.site?.href },
+      { '@type': 'ListItem', position: 2, name: 'Elo Change Calculator', item: new URL('/elo-calculator', Astro.site).href },
+    ],
+  },
+];
+---
+
+<BaseLayout
+  title="Elo Calculator - FIDE Chess Rating Change Calculator (K-Factor 40/20/10)"
+  description="FIDE elo calculator: enter your rating, opponent and result to get your exact rating change (ΔR = K×(S−E)). Supports K-factor 40/20/10 with auto detection, the official FIDE table, the 400-point rule and multi-game mini-tournaments."
+  canonical="/elo-calculator"
+  jsonLd={jsonLd}
+>
+
+  <nav class="crumbs wrap" aria-label="Breadcrumb">
+    <ol>
+      <li><a href="/">EloForge</a></li>
+      <li><span aria-current="page">Elo Change Calculator</span></li>
+    </ol>
+  </nav>
+
+  <header class="pagehead wrap">
+    <p class="kicker">Instrument № 1</p>
+    <h1>Elo Change Calculator</h1>
+    <p class="lede">
+      The FIDE formula, game by game. Enter your rating and K-factor, then one opponent or a
+      whole mini-tournament - every ΔR is computed with the official Table 8.1.2 expectation.
+    </p>
+  </header>
+
+  <div class="wrap">
+    <div class="tool">
+      <!-- ============ FORM ============ -->
+      <form class="tool__form" id="calc-form" novalidate>
+        <div class="fieldrow">
+          <div class="field">
+            <label for="rating">Your rating <span class="hint">100–3000</span></label>
+            <input type="number" id="rating" value="2000" min="100" max="3000" step="1" inputmode="numeric" required />
+          </div>
+          <div class="field">
+            <label for="kselect">K-factor</label>
+            <select id="kselect">
+              <option value="auto" selected>Auto (by rating, games &amp; age)</option>
+              <option value="40">K = 40 (new player / junior)</option>
+              <option value="20">K = 20 (established, under 2400)</option>
+              <option value="10">K = 10 (has reached 2400)</option>
+            </select>
+          </div>
+        </div>
+
+        <fieldset class="field" id="kctx" style="border:1px solid var(--line-soft); padding:14px 16px 6px; margin:0 0 18px;">
+          <legend class="fieldlegend" style="display:inline; padding:0 6px;">Auto-K - your situation</legend>
+          <div class="fieldrow">
+            <div class="field" style="margin-bottom:12px;">
+              <label for="games-played">Rated games played <span class="hint">so far</span></label>
+              <input type="number" id="games-played" value="30" min="0" max="2000" step="1" inputmode="numeric" />
+            </div>
+            <div style="padding-top:26px;">
+              <label class="check"><input type="checkbox" id="under18" /> Under 18 (until year of 18th birthday)</label>
+              <label class="check"><input type="checkbox" id="ever2400" /> Published rating has reached 2400</label>
+            </div>
+          </div>
+          <p class="figure-small" id="kctx-note" style="margin:0 0 10px;"></p>
+        </fieldset>
+
+        <div class="field">
+          <label id="lbl-method">Expected score method</label>
+          <div class="segmented" role="radiogroup" aria-labelledby="lbl-method">
+            <label><input type="radio" name="method" value="fide-table" checked /><span>FIDE table 8.1.2</span></label>
+            <label><input type="radio" name="method" value="logistic" /><span>Exact logistic</span></label>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="fieldlegend">Games of the event <span class="hint">add rounds for a mini-tournament</span></span>
+          <div class="gamerows" id="rows"></div>
+          <div class="rows-actions">
+            <button type="button" class="btn btn--small btn--ghost" id="addrow">+ Add game</button>
+            <button type="button" class="btn btn--small btn--quiet" id="example">Load example event</button>
+          </div>
+        </div>
+
+        <label class="check" style="margin-top:4px;">
+          <input type="checkbox" id="cap400" checked />
+          Apply the 400-point rule (art. 8.3.1 - players rated under 2650)
+        </label>
+        <p class="figure-small" role="alert" id="err" style="color:#a33c1f; min-height:1.2em; margin-bottom:0;"></p>
+      </form>
+
+      <!-- ============ RESULTS ============ -->
+      <div class="tool__result" aria-live="polite">
+        <p class="result-sub">Rating change</p>
+        <div class="result-headline">
+          <span class="result-big" id="delta">+10.0</span>
+          <span class="result-big" style="font-size:1.4rem; color:var(--ink-3);">→</span>
+          <span class="result-big" id="newrating">2010</span>
+        </div>
+        <p class="figure-small" id="period-note" style="margin-top:-4px;"></p>
+
+        <dl class="statgrid statgrid--three">
+          <div class="stat"><dt>K used</dt><dd id="stat-k">20</dd></div>
+          <div class="stat"><dt>Expected score</dt><dd id="stat-e">0.50<small>= 50%</small></dd></div>
+          <div class="stat"><dt>Σ (S − E)</dt><dd id="stat-sum">+0.50</dd></div>
+        </dl>
+
+        <div class="datatable-wrap">
+          <table class="datatable" id="gametable">
+            <caption>Game by game - official-style calculation</caption>
+            <thead>
+              <tr>
+                <th scope="col">Game</th>
+                <th scope="col">Opponent</th>
+                <th scope="col">Diff D</th>
+                <th scope="col">E</th>
+                <th scope="col">S</th>
+                <th scope="col">ΔR</th>
+              </tr>
+            </thead>
+            <tbody id="gametable-body"></tbody>
+            <tfoot id="gametable-foot"></tfoot>
+          </table>
+        </div>
+        <p class="figure-small" id="projection-note"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ARTICLE ============ -->
+  <section class="section wrap-narrow">
+    <p class="kicker">The arithmetic</p>
+    <h2>How your rating change is computed.</h2>
+    <div class="prose">
+      <p class="dropcap">
+        Two numbers decide every game: your expected score E and the coefficient K. The FIDE
+        system reads E from its official table - rating difference D = your rating minus your
+        opponent's, capped at 400 for under-2650 players - and then pays
+        ΔR = K × (S − E) for the game<span class="cite">[<a href="/about#f1">F1</a>]</span>.
+        Win as the underdog and S − E is large and positive; lose as the favourite and it cuts
+        the same deep.
+      </p>
+    </div>
+
+    <div class="plate">
+      <p class="plate__tag">Worked examples - verify them above</p>
+      <div class="equation">2000 vs 2000, win, K = 20 → ΔR = 20 × (1 − 0.50) = <strong>+10</strong></div>
+      <div class="equation">2400 vs 2000, win, K = 10 → ΔR = 10 × (1 − 0.92) = <strong>+0.8</strong></div>
+      <p class="plate__note">
+        The second example shows why the table matters: the exact logistic curve would give
+        E ≈ 0.909 and ΔR ≈ +0.9, but FIDE's published table reads 0.92 at D = 400 - switch
+        the method toggle to see both.
+      </p>
+    </div>
+
+    <div class="prose">
+      <h3>Choosing your K-factor</h3>
+      <p>
+        Set K to <strong>Auto</strong> and answer the three questions, or pick it yourself:
+        K = 40 covers your first 30 rated games and juniors under 18 (below 2300); K = 20
+        covers established players under 2400; K = 10 belongs to anyone who has published
+        2400 - permanently<span class="cite">[<a href="/about#f1">F1</a>]</span>. If K × games-in-period
+        would exceed 700, FIDE lowers K for that period.
+      </p>
+      <h3>Multi-game events</h3>
+      <p>
+        FIDE settles ratings once per period: it sums (S − E) across all your games and
+        multiplies by your K for that period, rounding the total to the nearest whole point,
+        0.5 away from zero<span class="cite">[<a href="/about#f1">F1</a>]</span>. The table above
+        follows that official style. Our sequential projection (shown when it differs) instead
+        re-rates you after every game - useful for seeing how a hot streak compounds.
+      </p>
+    </div>
+
+    <div class="note">
+      <span class="note__tag">Related</span>
+      <p>
+        Want the expectation without the delta? <a href="/expected-score">Expected score calculator</a>
+        · turning a cross-table into a TPR? <a href="/performance-rating">Performance rating calculator</a>
+        · planning the climb? <a href="/rating-planner">Rating goal planner</a>
+        · still unsure about K? <a href="/faq#k-factor">What K-factor am I?</a>
+      </p>
+    </div>
+  </section>
+
+  <script>
+  import {
+    autoK,
+    expectedScore,
+    expectedScoreFideTable,
+    fmtDelta,
+    playGame,
+    roundFide,
+    type GameResult,
+    type KFactor,
+  } from '../lib/fide';
+
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+
+  interface RowState { opp: number; score: GameResult }
+
+  const rows: RowState[] = [
+    { opp: 2000, score: 1 },
+    { opp: 2000, score: 1 },
+    { opp: 2000, score: 1 },
+  ];
+
+  const RESULT_LABEL: Record<GameResult, string> = { 1: 'Win', 0.5: 'Draw', 0: 'Loss' };
+  const RESULT_VALUE: Record<string, GameResult> = { '1': 1, '0.5': 0.5, '0': 0 };
+
+  function ratingInput(id: string): number | null {
+    const el = $(id) as unknown as HTMLInputElement;
+    const v = Number(el.value);
+    const ok = Number.isFinite(v) && v >= 100 && v <= 3000;
+    el.setAttribute('aria-invalid', ok ? 'false' : 'true');
+    return ok ? Math.round(v) : null;
+  }
+
+  function renderRows() {
+    const host = $('rows');
+    host.innerHTML = '';
+    rows.forEach((r, i) => {
+      const div = document.createElement('div');
+      div.className = 'gamerow';
+      div.innerHTML = `
+        <span class="gamerow__no">${i + 1}</span>
+        <input type="number" value="${r.opp}" min="100" max="3000" step="1" inputmode="numeric" aria-label="Round ${i + 1} opponent rating" />
+        <select aria-label="Round ${i + 1} result">
+          <option value="1"${r.score === 1 ? ' selected' : ''}>Win</option>
+          <option value="0.5"${r.score === 0.5 ? ' selected' : ''}>Draw</option>
+          <option value="0"${r.score === 0 ? ' selected' : ''}>Loss</option>
+        </select>
+        <button type="button" class="gamerow__del" aria-label="Remove round ${i + 1}" title="Remove">×</button>`;
+      const [oppInput, sel] = [div.querySelector('input')!, div.querySelector('select')!];
+      oppInput.addEventListener('input', () => { const v = Number(oppInput.value); if (Number.isFinite(v)) { rows[i].opp = v; update(); } else update(); });
+      sel.addEventListener('change', () => { rows[i].score = RESULT_VALUE[sel.value]; update(); });
+      div.querySelector('button')!.addEventListener('click', () => { rows.splice(i, 1); if (rows.length === 0) rows.push({ opp: 2000, score: 1 }); renderRows(); update(); });
+      host.appendChild(div);
+    });
+  }
+
+  function addRow(opp = 2000, score: GameResult = 1) {
+    rows.push({ opp, score });
+    renderRows();
+    update();
+  }
+
+  function update() {
+    const err = $('err');
+    const rating = ratingInput('rating');
+    const kSel = ($('kselect') as unknown as HTMLSelectElement).value;
+    const method = (document.querySelector('input[name="method"]:checked') as HTMLInputElement).value as 'fide-table' | 'logistic';
+    const cap400 = ($('cap400') as unknown as HTMLInputElement).checked;
+    const kCtxEl = $('kctx');
+    const under18 = ($('under18') as unknown as HTMLInputElement).checked;
+    const ever2400 = ($('ever2400') as unknown as HTMLInputElement).checked;
+    const gamesPlayed = Math.max(0, Math.round(Number(($('games-played') as unknown as HTMLInputElement).value) || 0));
+
+    kCtxEl.style.display = kSel === 'auto' ? '' : 'none';
+
+    // validate opponents
+    let badOpp = -1;
+    rows.forEach((r, i) => { if (!(r.opp >= 100 && r.opp <= 3000)) badOpp = i; });
+
+    if (rating === null) { err.textContent = 'Enter a rating between 100 and 3000.'; return; }
+    if (badOpp >= 0) { err.textContent = `Round ${badOpp + 1}: opponent rating must be 100–3000.`; return; }
+    err.textContent = '';
+
+    const startK: KFactor = kSel === 'auto'
+      ? autoK({ ratedGamesPlayed: gamesPlayed, rating, under18, everReached2400: ever2400 })
+      : (Number(kSel) as KFactor);
+
+    // ---- official-style: one K for the period, sum of (S − E) ----
+    const tbody = $('gametable-body');
+    const tfoot = $('gametable-foot');
+    tbody.innerHTML = '';
+    let sumSE = 0;
+    rows.forEach((r, i) => {
+      const g = playGame({ rating, opponent: r.opp, score: r.score, k: startK, cap400, method });
+      sumSE += r.score - g.e;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${i + 1}</td>
+        <td>${Math.round(r.opp)}</td>
+        <td>${g.dEff > 0 ? '+' : g.dEff < 0 ? '\u2212' : ''}${Math.abs(Math.round(g.dEff))}${Math.abs(Math.round(g.dEff)) !== Math.abs(Math.round(r.opp - rating)) ? ' *' : ''}</td>
+        <td>${g.e.toFixed(2)}</td>
+        <td>${r.score === 1 ? '1' : r.score === 0.5 ? '½' : '0'}</td>
+        <td>${fmtDelta(startK * (r.score - g.e))}</td>`;
+      tbody.appendChild(tr);
+    });
+    const officialTotal = roundFide(startK * sumSE);
+    tfoot.innerHTML = `
+      <tr><td colspan="5">Σ (S − E) × K = ${fmtDelta(startK * sumSE)} → rounded</td><td>${fmtDelta(officialTotal, 0)}</td></tr>`;
+
+    // headline numbers
+    $('delta').textContent = fmtDelta(officialTotal, 0);
+    const newOfficial = rating + officialTotal;
+    $('newrating').textContent = String(newOfficial);
+    $('stat-k').textContent = String(startK);
+    const eFirst = expectedScore(rating - rows[0].opp, method);
+    $('stat-e').innerHTML = rows.length === 1 ? `${eFirst.toFixed(2)}<small>= ${(eFirst * 100).toFixed(0)}%</small>` : ` - <small>per game</small>`;
+    $('stat-sum').textContent = fmtDelta(sumSE);
+
+    // ---- sequential projection (re-rate after every game; auto-K may change) ----
+    let simRating = rating;
+    let simGames = gamesPlayed;
+    let simEver = ever2400 || rating >= 2400;
+    const simKs: KFactor[] = [];
+    rows.forEach((r) => {
+      const k = kSel === 'auto' ? autoK({ ratedGamesPlayed: simGames, rating: simRating, under18, everReached2400: simEver }) : startK;
+      simKs.push(k);
+      const g = playGame({ rating: simRating, opponent: r.opp, score: r.score, k, cap400, method });
+      simRating += g.delta;
+      simGames += 1;
+      simEver = simEver || simRating >= 2400;
+    });
+    const simNew = Math.round(simRating);
+    const differs = simNew !== newOfficial;
+    $('period-note').textContent = (cap400 && rating >= 2650
+      ? '400-point cap not applied - you are rated 2650+ (art. 8.3.1). '
+      : '') + `Raw total ${fmtDelta(startK * sumSE)} → rounds to ${fmtDelta(officialTotal, 0)} per art. 8.3.4 (0.5 away from zero).`;
+    $('projection-note').textContent = differs
+      ? `Sequential projection (re-rated after each game): ${fmtDelta(simNew - rating, 0)} → ${simNew}. K path: ${simKs.join(' → ')}.`
+      : `Sequential projection matches: ${fmtDelta(simNew - rating, 0)} → ${simNew}.`;
+
+    // auto-K explanation line
+    if (kSel === 'auto') {
+      $('kctx-note').textContent = `Auto K = ${startK} - ` + (
+        gamesPlayed < 30 ? 'fewer than 30 rated games.'
+        : ever2400 ? 'published 2400+ reached; K stays 10 permanently.'
+        : under18 && rating < 2300 ? 'under 18 and rated below 2300.'
+        : rating < 2400 ? 'established player below 2400.' : 'rated 2400+.'
+      );
+    }
+  }
+
+  // wire up
+  ['rating', 'kselect', 'games-played', 'under18', 'ever2400', 'cap400'].forEach((id) =>
+    $(id).addEventListener('input', update));
+  document.querySelectorAll('input[name="method"]').forEach((el) => el.addEventListener('change', update));
+  $('addrow').addEventListener('click', () => addRow());
+  $('example').addEventListener('click', () => {
+    ($('rating') as unknown as HTMLInputElement).value = '1850';
+    ($('kselect') as unknown as HTMLSelectElement).value = 'auto';
+    ($('games-played') as unknown as HTMLInputElement).value = '28';
+    ($('cap400') as unknown as HTMLInputElement).checked = true;
+    rows.length = 0;
+    addRow(1920, 1); addRow(2050, 0.5); addRow(2135, 0); addRow(1990, 1);
+    update();
+  });
+
+  renderRows();
+  update();
+</script>
+</BaseLayout>

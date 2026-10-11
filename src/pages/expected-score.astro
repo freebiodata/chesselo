@@ -1,0 +1,292 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebApplication',
+    name: 'EloForge Expected Score Calculator',
+    url: new URL('/expected-score', Astro.site).href,
+    applicationCategory: 'UtilitiesApplication',
+    operatingSystem: 'Any (web browser)',
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    description: 'Chess expected score calculator: your odds against any rating, from the official FIDE table and the exact Elo logistic curve, with the 400-point ladder chart.',
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'EloForge', item: Astro.site?.href },
+      { '@type': 'ListItem', position: 2, name: 'Expected Score Calculator', item: new URL('/expected-score', Astro.site).href },
+    ],
+  },
+];
+---
+
+<BaseLayout
+  title="Expected Score Calculator - Your Chess Odds by Rating Difference"
+  description="What are your odds? Enter two ratings and get the expected score from the official FIDE table 8.1.2 and the exact logistic curve E = 1/(1+10^(ΔR/400)), plus the full 400-point ladder."
+  canonical="/expected-score"
+  jsonLd={jsonLd}
+>
+
+  <nav class="crumbs wrap" aria-label="Breadcrumb">
+    <ol>
+      <li><a href="/">EloForge</a></li>
+      <li><span aria-current="page">Expected Score Calculator</span></li>
+    </ol>
+  </nav>
+
+  <header class="pagehead wrap">
+    <p class="kicker">Instrument № 2</p>
+    <h1>Expected Score Calculator</h1>
+    <p class="lede">
+      What are my odds? The Elo system answers with one number: your <em>expected score</em> - 
+      points per game against this opponent, draws counted as half. Here it is from the
+      official FIDE table and the exact curve.
+    </p>
+  </header>
+
+  <div class="wrap">
+    <div class="tool">
+      <!-- ============ FORM ============ -->
+      <form class="tool__form" id="calc-form" novalidate>
+        <div class="fieldrow">
+          <div class="field">
+            <label for="rating">Your rating <span class="hint">100–3000</span></label>
+            <input type="number" id="rating" value="2000" min="100" max="3000" step="1" inputmode="numeric" />
+          </div>
+          <div class="field">
+            <label for="opponent">Opponent's rating</label>
+            <input type="number" id="opponent" value="2200" min="100" max="3000" step="1" inputmode="numeric" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label id="lbl-k">If this were a rated game - K-factor for the stakes</label>
+          <select id="kselect">
+            <option value="40">K = 40 (new player / junior)</option>
+            <option value="20" selected>K = 20 (established, under 2400)</option>
+            <option value="10">K = 10 (has reached 2400)</option>
+          </select>
+        </div>
+
+        <div class="note" style="margin-top:26px;">
+          <span class="note__tag">Read it right</span>
+          <p>
+            Expected score is <strong>points per game</strong>, not win probability. E = 0.76
+            could be 76% wins with no draws - or 52% wins and 48% draws. Elo pins the total,
+            not the split.
+          </p>
+        </div>
+
+        <div class="chipline">
+          <span class="chip">Equal ratings → 0.50</span>
+          <span class="chip">+100 → 0.64</span>
+          <span class="chip">+200 → 0.76</span>
+          <span class="chip">+400 → 0.92</span>
+        </div>
+        <p class="figure-small" role="alert" id="err" style="color:#a33c1f; min-height:1.2em; margin-bottom:0;"></p>
+      </form>
+
+      <!-- ============ RESULTS ============ -->
+      <div class="tool__result" aria-live="polite">
+        <p class="result-sub">Expected score (FIDE table 8.1.2)</p>
+        <div class="result-headline">
+          <span class="result-big" id="big-e">0.24</span>
+          <span class="result-big" style="font-size:1.3rem; color:var(--ink-3);">≈</span>
+          <span class="result-big" style="font-size:1.9rem;" id="big-e-pct">24%</span>
+        </div>
+        <p class="figure-small" id="headline-note"></p>
+
+        <dl class="statgrid statgrid--three">
+          <div class="stat"><dt>Difference D</dt><dd id="stat-d">−200</dd></div>
+          <div class="stat"><dt>Logistic E</dt><dd id="stat-log">0.240</dd></div>
+          <div class="stat"><dt>Per game at K</dt><dd id="stat-k">+5.2<small>draw</small></dd></div>
+        </dl>
+
+        <figure class="chart-plate">
+          <div id="curve"></div>
+          <figcaption>
+            The logistic curve behind Elo (line) and FIDE's table anchors (dots).
+            Your pairing is the wood marker.
+          </figcaption>
+        </figure>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ LADDER TABLE ============ -->
+  <section class="section wrap-narrow">
+    <p class="kicker">The 400-point ladder</p>
+    <h2>Your odds across the field.</h2>
+    <p class="lede" style="max-width:38em;">
+      Expected score against opponents from 400 below you to 400 above - the band the
+      400-point rule was written for. Your current pairing is highlighted.
+    </p>
+    <div class="datatable-wrap">
+      <table class="datatable">
+        <caption>Expected score from your rating of <span id="ladder-me">2000</span></caption>
+        <thead>
+          <tr>
+            <th scope="col">Opponent</th>
+            <th scope="col">D</th>
+            <th scope="col">FIDE table</th>
+            <th scope="col">Logistic curve</th>
+            <th scope="col">Points / 100 games</th>
+          </tr>
+        </thead>
+        <tbody id="ladder-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ ARTICLE ============ -->
+  <section class="section rule-top wrap-narrow">
+    <p class="kicker">The arithmetic</p>
+    <h2>Where the number comes from.</h2>
+    <div class="prose">
+      <p class="dropcap">
+        Elo's model treats a rating difference as an odds ratio. Ten to one in your favour
+        means 400 points; one to one means level. Formally, with D = your rating minus your
+        opponent's, the expected score is read from FIDE's Table 8.1.2 - and the smooth curve
+        underneath it is the logistic function<span class="cite">[<a href="/about#f1">F1</a>, <a href="/about#w1">W1</a>]</span>:
+      </p>
+    </div>
+
+    <div class="plate">
+      <p class="plate__tag">Expected score</p>
+      <p class="equation">
+        <i>E</i> = 1 / (1 + 10<sup>(<i>R</i><sub>opp</sub> − <i>R</i><sub>you</sub>)/400</sup>)
+      </p>
+      <p class="plate__note">
+        Worked check: 2000 vs 2200 → D = −200 → <strong>E = 0.24</strong> (table) and 0.240
+        (curve). In 100 such games you'd bank about 24 points - likely a handful of wins
+        cushioned by draws.
+      </p>
+    </div>
+
+    <div class="prose">
+      <p>
+        The table and the curve disagree only in rounding: FIDE publishes E in 0.01 steps, so
+        at D = 400 the table reads 0.92 while the curve gives 0.909. For a single game the
+        difference is hundredths of a point; over a career they are the same machine.
+        When the gap exceeds 400, remember the guard-rail: for players rated below 2650 the
+        difference is counted as exactly 400 for rating purposes
+        (art. 8.3.1)<span class="cite">[<a href="/about#f1">F1</a>]</span> - so a 2700-rated
+        opponent is, to your rating, a 2400 one.
+      </p>
+    </div>
+
+    <div class="note">
+      <span class="note__tag">Related</span>
+      <p>
+        Turn this expectation into points: <a href="/elo-calculator">Elo change calculator</a>
+        · a whole cross-table: <a href="/performance-rating">Performance rating calculator</a>
+        · the long climb: <a href="/rating-planner">Rating goal planner</a>
+      </p>
+    </div>
+  </section>
+
+  <script>
+    import { expectedScoreFideTable, expectedScoreLogistic, fmtDelta, type KFactor } from '../lib/fide';
+
+    const $ = (id: string) => document.getElementById(id) as HTMLInputElement;
+
+    /* ---------- curve chart ---------- */
+    function renderCurve(dUser: number) {
+      const W = 640, H = 300, L = 46, R = 16, T = 14, B = 34;
+      const DMIN = -600, DMAX = 600;
+      const x = (d: number) => L + ((d - DMIN) / (DMAX - DMIN)) * (W - L - R);
+      const y = (e: number) => T + (1 - e) * (H - T - B);
+
+      let path = '';
+      for (let px = 0; px <= 200; px++) {
+        const d = DMIN + (px / 200) * (DMAX - DMIN);
+        path += `${px === 0 ? 'M' : 'L'}${x(d).toFixed(1)} ${y(expectedScoreLogistic(d)).toFixed(1)}`;
+      }
+
+      const anchors = [0, 100, 200, 300, 400, 500, 600, -100, -200, -300, -400, -500, -600];
+      const dClamped = Math.max(DMIN, Math.min(DMAX, dUser));
+
+      const grid = [0, 0.25, 0.5, 0.75, 1].map((e) =>
+        `<line x1="${L}" y1="${y(e)}" x2="${W - R}" y2="${y(e)}" stroke="rgba(28,26,23,.12)" stroke-width="1"/>` +
+        `<text x="${L - 8}" y="${y(e) + 4}" text-anchor="end" font-size="11" fill="#6f675c" font-family="Georgia,serif">${e.toFixed(2)}</text>`).join('');
+      const ticks = [-400, -200, 0, 200, 400].map((d) =>
+        `<line x1="${x(d)}" y1="${H - B}" x2="${x(d)}" y2="${H - B + 5}" stroke="#6f675c"/>` +
+        `<text x="${x(d)}" y="${H - B + 18}" text-anchor="middle" font-size="11" fill="#6f675c" font-family="Georgia,serif">${d > 0 ? '+' + d : d}</text>`).join('');
+      const band400 = `<rect x="${x(-400)}" y="${T}" width="${x(400) - x(-400)}" height="${H - T - B}" fill="rgba(138,90,51,.05)"/>`;
+      const anchorDots = anchors.map((d) =>
+        `<circle cx="${x(d)}" cy="${y(expectedScoreFideTable(d))}" r="3.2" fill="#6f675c"/>`).join('');
+      const marker = `<line x1="${x(dClamped)}" y1="${T}" x2="${x(dClamped)}" y2="${H - B}" stroke="#8a5a33" stroke-dasharray="3 4"/>` +
+        `<circle cx="${x(dClamped)}" cy="${y(expectedScoreLogistic(dClamped))}" r="6" fill="#8a5a33" stroke="#f7f3ea" stroke-width="2"/>`;
+
+      $('curve').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Expected score curve">
+        ${band400}${grid}
+        <line x1="${L}" y1="${y(0.5)}" x2="${W - R}" y2="${y(0.5)}" stroke="rgba(28,26,23,.3)" stroke-width="1"/>
+        <path d="${path}" fill="none" stroke="#1c1a17" stroke-width="2.2"/>
+        ${anchorDots}${marker}${ticks}
+        <line x1="${L}" y1="${T}" x2="${L}" y2="${H - B}" stroke="#6f675c"/>
+        <line x1="${L}" y1="${H - B}" x2="${W - R}" y2="${H - B}" stroke="#6f675c"/>
+      </svg>`;
+    }
+
+    /* ---------- ladder table ---------- */
+    function renderLadder(me: number, currentOpp: number) {
+      const body = $('ladder-body');
+      body.innerHTML = '';
+      $('ladder-me').textContent = String(me);
+      for (let d = 400; d >= -400; d -= 50) {
+        const opp = me - d;
+        const fide = expectedScoreFideTable(d);
+        const log = expectedScoreLogistic(d);
+        const isCurrent = Math.abs(opp - currentOpp) < 25;
+        const tr = document.createElement('tr');
+        if (isCurrent) tr.className = 'is-current';
+        tr.innerHTML = `
+          <td>${opp}</td>
+          <td>${d > 0 ? '+' : d < 0 ? '\u2212' : ''}${Math.abs(d)}</td>
+          <td>${fide.toFixed(2)}</td>
+          <td>${log.toFixed(3)}</td>
+          <td>${(fide * 100).toFixed(0)} pts</td>`;
+        body.appendChild(tr);
+      }
+    }
+
+    function update() {
+      const err = $('err');
+      const me = Number($('rating').value);
+      const opp = Number($('opponent').value);
+      const k = Number($('kselect').value) as KFactor;
+      const ok = (v: number) => Number.isFinite(v) && v >= 100 && v <= 3000;
+      $('rating').setAttribute('aria-invalid', ok(me) ? 'false' : 'true');
+      $('opponent').setAttribute('aria-invalid', ok(opp) ? 'false' : 'true');
+      if (!ok(me) || !ok(opp)) { err.textContent = 'Both ratings must be between 100 and 3000.'; return; }
+      err.textContent = '';
+
+      const d = me - opp;
+      const eFide = expectedScoreFideTable(d);
+      const eLog = expectedScoreLogistic(d);
+
+      $('big-e').textContent = eFide.toFixed(2);
+      $('big-e-pct').textContent = `${Math.round(eFide * 100)}%`;
+      $('stat-d').textContent = `${d > 0 ? '+' : d < 0 ? '\u2212' : ''}${Math.abs(d)}`;
+      $('stat-log').textContent = eLog.toFixed(3);
+      const drawDelta = k * (0.5 - eFide);
+      const winDelta = k * (1 - eFide);
+      const lossDelta = k * (0 - eFide);
+      $('stat-k').innerHTML = `${fmtDelta(drawDelta)}<small>draw</small>`;
+      $('headline-note').textContent =
+        `Against ${opp}: W ${fmtDelta(winDelta)} · D ${fmtDelta(drawDelta)} · L ${fmtDelta(lossDelta)} at K = ${k}. ` +
+        (Math.abs(d) > 400
+          ? (me < 2650 ? 'Gap above 400 - for rating it counts as 400 (art. 8.3.1).' : 'You are 2650+: the true gap is used.')
+          : `In 100 games, about ${(eFide * 100).toFixed(0)} points.`);
+
+      renderCurve(d);
+      renderLadder(me, opp);
+    }
+
+    ['rating', 'opponent', 'kselect'].forEach((id) => $(id).addEventListener('input', update));
+    update();
+  </script>
+</BaseLayout>

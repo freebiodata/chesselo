@@ -1,0 +1,261 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebApplication',
+    name: 'EloForge Performance Rating Calculator',
+    url: new URL('/performance-rating', Astro.site).href,
+    applicationCategory: 'UtilitiesApplication',
+    operatingSystem: 'Any (web browser)',
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    description: 'Tournament performance rating calculator: enter opponents and results to get your TPR by the FIDE Ra + dp formula, the rating + score-delta method, and the linear algorithm of 400 - with GM/IM norm benchmarks.',
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'EloForge', item: Astro.site?.href },
+      { '@type': 'ListItem', position: 2, name: 'Performance Rating Calculator', item: new URL('/performance-rating', Astro.site).href },
+    ],
+  },
+];
+---
+
+<BaseLayout
+  title="Tournament Performance Rating Calculator - FIDE TPR (Ra + dp)"
+  description="Chess performance rating calculator: enter your tournament games (opponent ratings + results) and get your TPR three ways - FIDE Ra + dp table method, rating + score-based delta, and the linear algorithm of 400. GM 2600 / IM 2450 norm context included."
+  canonical="/performance-rating"
+  jsonLd={jsonLd}
+>
+
+  <nav class="crumbs wrap" aria-label="Breadcrumb">
+    <ol>
+      <li><a href="/">EloForge</a></li>
+      <li><span aria-current="page">Performance Rating Calculator</span></li>
+    </ol>
+  </nav>
+
+  <header class="pagehead wrap">
+    <p class="kicker">Instrument № 3</p>
+    <h1>Performance Rating Calculator</h1>
+    <p class="lede">
+      A tournament, distilled to one number. Enter your opponents and results - get your
+      tournament performance rating by the FIDE formula, the rating + score-delta method, and
+      see where it lands against the GM and IM norm bars.
+    </p>
+  </header>
+
+  <div class="wrap">
+    <div class="tool">
+      <!-- ============ FORM ============ -->
+      <form class="tool__form" id="calc-form" novalidate>
+        <div class="field">
+          <label for="ownrating">Your rating <span class="hint">optional - enables the rating + delta method</span></label>
+          <input type="number" id="ownrating" value="2100" min="100" max="3000" step="1" inputmode="numeric" />
+        </div>
+
+        <div class="field">
+          <span class="fieldlegend">Tournament games <span class="hint">opponent + result per round</span></span>
+          <div class="gamerows" id="rows"></div>
+          <div class="rows-actions">
+            <button type="button" class="btn btn--small btn--ghost" id="addrow">+ Add game</button>
+            <button type="button" class="btn btn--small btn--quiet" id="example">Load 9-round example</button>
+          </div>
+        </div>
+        <p class="figure-small" role="alert" id="err" style="color:#a33c1f; min-height:1.2em; margin:8px 0 0;"></p>
+      </form>
+
+      <!-- ============ RESULTS ============ -->
+      <div class="tool__result" aria-live="polite">
+        <p class="result-sub">Tournament performance (FIDE: Ra + dp)</p>
+        <div class="result-headline">
+          <span class="result-big" id="big-tpr">2366</span>
+        </div>
+        <p class="figure-small" id="tpr-note"></p>
+
+        <dl class="statgrid statgrid--three" style="grid-template-columns:repeat(3,1fr);">
+          <div class="stat"><dt>Score</dt><dd id="stat-score">6.5<small>/ 9</small></dd></div>
+          <div class="stat"><dt>p (score %)</dt><dd id="stat-p">0.72</dd></div>
+          <div class="stat"><dt>dp (table 8.1.1)</dt><dd id="stat-dp">+166</dd></div>
+          <div class="stat"><dt>Average opp. Ra</dt><dd id="stat-ra">2200</dd></div>
+          <div class="stat"><dt>Rating + delta</dt><dd id="stat-own">2266<small>alt method</small></dd></div>
+          <div class="stat"><dt>Linear (algorithm of 400)</dt><dd id="stat-linear">2377.8<small>reference</small></dd></div>
+        </dl>
+
+        <!-- norms gauge -->
+        <div style="margin-top:20px;">
+          <p class="result-sub" style="margin-bottom:10px;">Norm context <span style="text-transform:none; letter-spacing:0;">(FIDE Title Regulations 1.4)</span></p>
+          <div id="gauge" style="position:relative; height:64px; margin-bottom:6px;"></div>
+          <p class="figure-small" id="gauge-note"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ARTICLE ============ -->
+  <section class="section wrap-narrow">
+    <p class="kicker">Two philosophies, one dp</p>
+    <h2>How performance rating is calculated.</h2>
+    <div class="prose">
+      <p class="dropcap">
+        Both accepted methods share a core step: convert your percentage score <em>p</em> into a
+        rating difference <em>d<sub>p</sub></em> using FIDE's Table 8.1.1 - the inverse of the
+        expected-score table<span class="cite">[<a href="/about#f1">F1</a>]</span>. Score 50%
+        and d<sub>p</sub> = 0; score 72% and d<sub>p</sub> = +166; score 100% and
+        d<sub>p</sub> = +800. Where the methods disagree is the anchor:
+      </p>
+    </div>
+
+    <div class="plate">
+      <p class="plate__tag">Method A - FIDE tournament performance</p>
+      <p class="equation"><i>TPR</i> = <i>R</i><sub>a</sub> + <i>d</i><sub>p</sub></p>
+      <p class="plate__tag" style="margin-top:16px;">Method B - rating + score-based delta</p>
+      <p class="equation"><i>TPR</i><sub>B</sub> = <i>R</i><sub>you</sub> + <i>d</i><sub>p</sub></p>
+      <p class="plate__note">
+        Method A answers "how strong did you play <em>this week</em>?" - it ignores your own
+        rating entirely. Method B answers "where does this event move my level?" - the same
+        score delta, anchored to you. When you score exactly what your rating predicted
+        (E ≈ p), the two agree.
+      </p>
+    </div>
+
+    <div class="prose">
+      <p>
+        FIDE applies Method A's logic when it <em>creates</em> ratings: a new player's initial
+        rating is the average of opponents plus d<sub>p</sub>, with two hypothetical draws
+        against 1800 built in and a 2200 ceiling (art. 8.2)<span class="cite">[<a href="/about#f1">F1</a>]</span>.
+        For norms, the Title Regulations set the bars: a <strong>GM norm needs a 2600+
+        performance over at least 9 games</strong> against opponents averaging ≥ 2380;
+        an <strong>IM norm needs 2450+</strong> against ≥ 2230 - plus the titled-opponent and
+        federation-mix rules (art. 1.4)<span class="cite">[<a href="/about#f2">F2</a>]</span>.
+        These bars are the convention organisers plan round-robin fields around.
+      </p>
+      <p>
+        A perfect score deserves a caveat: d<sub>p</sub> = 800 is a <em>lower bound</em>. Beat
+        four 2000s and your TPR reads 2800 - but so would 4/4 against the same field by any
+        stronger player; the table cannot separate them. That is why norm events need nine
+        games and a strong average: perfection must be tested, not assumed.
+      </p>
+    </div>
+
+    <div class="note">
+      <span class="note__tag">Related</span>
+      <p>
+        Points per game: <a href="/elo-calculator">Elo change calculator</a> ·
+        pre-game odds: <a href="/expected-score">Expected score calculator</a> ·
+        the climb ahead: <a href="/rating-planner">Rating goal planner</a> ·
+        more on method B: <a href="/faq#performance-rating">How is performance rating calculated?</a>
+      </p>
+    </div>
+  </section>
+
+  <script>
+    import { performance, dpFromP, type GameResult } from '../lib/fide';
+
+    const $ = (id: string) => document.getElementById(id) as HTMLInputElement;
+
+    interface Row { opp: number; score: GameResult }
+    const rows: Row[] = [
+      { opp: 2200, score: 1 }, { opp: 2150, score: 1 }, { opp: 2300, score: 0.5 },
+      { opp: 2250, score: 1 }, { opp: 2100, score: 1 }, { opp: 2200, score: 0.5 },
+      { opp: 2350, score: 1 }, { opp: 2200, score: 0 }, { opp: 2050, score: 0.5 },
+    ];
+
+    function renderRows() {
+      const host = $('rows');
+      host.innerHTML = '';
+      rows.forEach((r, i) => {
+        const div = document.createElement('div');
+        div.className = 'gamerow';
+        div.innerHTML = `
+          <span class="gamerow__no">${i + 1}</span>
+          <input type="number" value="${r.opp}" min="100" max="3000" step="1" inputmode="numeric" aria-label="Round ${i + 1} opponent rating" />
+          <select aria-label="Round ${i + 1} result">
+            <option value="1"${r.score === 1 ? ' selected' : ''}>Win</option>
+            <option value="0.5"${r.score === 0.5 ? ' selected' : ''}>Draw</option>
+            <option value="0"${r.score === 0 ? ' selected' : ''}>Loss</option>
+          </select>
+          <button type="button" class="gamerow__del" aria-label="Remove round ${i + 1}" title="Remove">×</button>`;
+        const [inp, sel] = [div.querySelector('input')!, div.querySelector('select')!];
+        inp.addEventListener('input', () => { rows[i].opp = Number(inp.value); update(); });
+        sel.addEventListener('change', () => { rows[i].score = Number(sel.value) as GameResult; update(); });
+        div.querySelector('button')!.addEventListener('click', () => { rows.splice(i, 1); if (!rows.length) rows.push({ opp: 2000, score: 1 }); renderRows(); update(); });
+        host.appendChild(div);
+      });
+    }
+
+    function normGauge(tpr: number, ra: number) {
+      const LO = 1800, HI = 2800;
+      const pos = (v: number) => Math.max(0, Math.min(100, ((v - LO) / (HI - LO)) * 100));
+      const marks = [
+        { v: 2230, label: 'IM Ra' },
+        { v: 2380, label: 'GM Ra' },
+        { v: 2450, label: 'IM 2450' },
+        { v: 2600, label: 'GM 2600' },
+      ];
+      const tprPos = pos(tpr);
+      const gauge = $('gauge');
+      gauge.innerHTML = `
+        <div style="position:relative; height:10px; background:var(--paper-3); border:1px solid var(--line-soft);">
+          <div style="position:absolute; inset:0 auto 0 0; width:${tprPos}%; background:linear-gradient(90deg, var(--wood-ghost-2), var(--wood));"></div>
+          ${marks.map((m) => `<div title="${m.label}" style="position:absolute; top:-3px; bottom:-3px; left:${pos(m.v)}%; width:2px; background:${m.label.includes('2600') || m.label.includes('2450') ? 'var(--ink)' : 'var(--ink-3)'};"></div>`).join('')}
+        </div>
+        <div style="position:absolute; left:${tprPos}%; top:16px; transform:translateX(-50%); font-weight:700; font-size:0.95rem; color:var(--wood-deep);">${tpr}</div>
+        <div style="position:absolute; left:0; top:38px; font-family:var(--sans); font-size:0.62rem; color:var(--ink-3);">1800</div>
+        <div style="position:absolute; left:50%; top:38px; transform:translateX(-50%); font-family:var(--sans); font-size:0.62rem; color:var(--ink-3);">2300</div>
+        <div style="position:absolute; right:0; top:38px; font-family:var(--sans); font-size:0.62rem; color:var(--ink-3);">2800</div>`;
+      const gm = tpr >= 2600 && ra >= 2380;
+      const im = tpr >= 2450 && ra >= 2230;
+      $('gauge-note').textContent =
+        `Your field averaged Ra = ${ra}. ` + (gm ? 'This event clears the GM performance bar (2600 / Ra ≥ 2380) - pending the 9-game, titled-opponent and federation rules of B.01 art. 1.4.'
+        : im ? 'This event clears the IM performance bar (2450 / Ra ≥ 2230) - pending the other B.01 art. 1.4 requirements.'
+        : 'IM needs ≥ 2450 vs Ra ≥ 2230; GM needs ≥ 2600 vs Ra ≥ 2380 (B.01 art. 1.4) - conventions, not guarantees.');
+    }
+
+    function update() {
+      const err = $('err');
+      const own = Number($('ownrating').value);
+      const ownOk = own >= 100 && own <= 3000 || !$('ownrating').value;
+      let bad = -1;
+      rows.forEach((r, i) => { if (!(r.opp >= 100 && r.opp <= 3000)) bad = i; });
+      if (bad >= 0) { err.textContent = `Round ${bad + 1}: opponent rating must be 100–3000.`; return; }
+      if (!ownOk) { err.textContent = 'Your rating must be 100–3000 (or empty).'; return; }
+      err.textContent = '';
+
+      const rep = performance(
+        rows.map((r) => ({ opponent: r.opp, score: r.score })),
+        ownOk && $('ownrating').value ? own : null,
+      );
+      if (!rep) { err.textContent = 'Add at least one game.'; return; }
+
+      $('big-tpr').textContent = String(rep.tprFide);
+      $('tpr-note').textContent =
+        rep.p === 1 ? 'Perfect score - dp caps at +800, so this TPR is a lower bound.'
+        : rep.p === 0 ? 'Zero score - dp floors at −800; likewise only a bound.'
+        : `Scored ${(rep.p * 100).toFixed(0)}% against a ${rep.ra}-average field.`;
+      $('stat-score').innerHTML = `${rep.score}<small>/ ${rep.n}</small>`;
+      $('stat-p').textContent = rep.p.toFixed(2);
+      $('stat-dp').textContent = (rep.dp >= 0 ? '+' : '\u2212') + Math.abs(rep.dp);
+      $('stat-ra').textContent = String(rep.ra);
+      $('stat-own').innerHTML = rep.tprFromOwnRating === null ? ' - <small>enter rating</small>' : String(rep.tprFromOwnRating);
+      $('stat-linear').innerHTML = `${rep.tprLinear}<small>reference</small>`;
+
+      normGauge(rep.tprFide, rep.ra);
+    }
+
+    $('addrow').addEventListener('click', () => { rows.push({ opp: 2100, score: 1 }); renderRows(); update(); });
+    $('example').addEventListener('click', () => {
+      rows.length = 0;
+      [[2200, 1], [2150, 1], [2300, 0.5], [2250, 1], [2100, 1], [2200, 0.5], [2350, 1], [2200, 0], [2050, 0.5]]
+        .forEach(([opp, score]) => rows.push({ opp: opp as number, score: score as GameResult }));
+      renderRows();
+      update();
+    });
+    $('ownrating').addEventListener('input', update);
+
+    renderRows();
+    update();
+  </script>
+</BaseLayout>

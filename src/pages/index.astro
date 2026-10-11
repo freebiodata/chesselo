@@ -1,0 +1,208 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Chessboard from '../components/Chessboard.astro';
+import Faq from '../components/Faq.astro';
+import { faqs, homeFaqs, faqJsonLd, sources } from '../lib/content';
+
+const tools = [
+  {
+    no: '01',
+    glyph: '♞',
+    href: '/elo-calculator',
+    title: 'Elo Change Calculator',
+    body: 'FIDE formula, game by game. Pick your K-factor (40 / 20 / 10, or auto by rating and age), enter opponents and results - single games or a whole mini-tournament.',
+  },
+  {
+    no: '02',
+    glyph: '♟',
+    href: '/expected-score',
+    title: 'Expected Score Calculator',
+    body: 'What are your odds? The official FIDE table and the exact logistic curve, side by side, with the 400-point ladder in one view.',
+  },
+  {
+    no: '03',
+    glyph: '♜',
+    href: '/performance-rating',
+    title: 'Performance Rating',
+    body: 'Turn a tournament cross-table into a TPR: the FIDE Ra + dp method, the rating + score-delta method, and GM/IM norm benchmarks.',
+  },
+  {
+    no: '04',
+    glyph: '♚',
+    href: '/rating-planner',
+    title: 'Rating Goal Planner',
+    body: 'How many wins to reach 1600 - or 2000, or 2200? Simulate the climb round by round against the opposition you actually face.',
+  },
+];
+
+const jsonLd = [
+  faqJsonLd(homeFaqs),
+  {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Chess rating calculators',
+    itemListElement: tools.map((t, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: t.title,
+      url: new URL(t.href, Astro.site).href,
+    })),
+  },
+];
+---
+
+<BaseLayout
+  title="Elo Calculator - Free Chess Rating Calculators (FIDE Formulas)"
+  description="Free chess rating calculators: FIDE elo calculator for rating change with K-factor, expected score odds, tournament performance rating, and a rating goal planner. Pure FIDE formulas, no sign-up."
+  canonical="/"
+  jsonLd={jsonLd}
+>
+
+  <!-- ================= HERO ================= -->
+  <section class="hero boardfield">
+    <div class="wrap">
+      <div class="hero__grid">
+        <div>
+          <p class="kicker">Free · In-browser · FIDE-standard</p>
+          <h1>Forge your <em>chess rating.</em></h1>
+          <p class="lede hero__lede">
+            Four precise calculators built straight from the FIDE Rating Regulations - rating
+            change, expected score, tournament performance and the road to your next goal.
+            Type a rating, get the arithmetic the arbiters use.
+          </p>
+          <div class="hero__actions">
+            <a class="btn" href="/elo-calculator">Elo change calculator</a>
+            <a class="btn btn--ghost" href="#tools">All four tools</a>
+          </div>
+          <p class="hero__meta">
+            <span>Official FIDE tables 8.1.1 &amp; 8.1.2 &nbsp;·&nbsp; K-factor 40 / 20 / 10 rules &nbsp;·&nbsp; the 400-point rule, included</span>
+          </p>
+        </div>
+        <div class="hero__board">
+          <div class="plate-board">
+            <Chessboard size={360} knightSquare="d5" />
+            <p class="plate-board__caption">
+              Figure 1 - the knight on d5. Each 400 rating points multiplies expected score
+              tenfold; the whole Elo idea in one sentence.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= TOOLS ================= -->
+  <section class="section" id="tools">
+    <div class="wrap">
+      <p class="kicker">The instruments</p>
+      <h2>Four calculators, one standard.</h2>
+      <p class="lede" style="max-width:38em; margin-bottom:34px;">
+        Each tool runs the published FIDE formulas - no approximations hiding under the hood - 
+        and shows its work.
+      </p>
+      <div class="toolgrid">
+        {tools.map((t) => (
+          <a class="toolcard" href={t.href}>
+            <span class="toolcard__no">№ {t.no}</span>
+            <span class="toolcard__glyph">{t.glyph}</span>
+            <h3>{t.title}</h3>
+            <p>{t.body}</p>
+            <span class="toolcard__go">Open calculator →</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= EDITORIAL ================= -->
+  <section class="section rule-top" id="how-ratings-work">
+    <div class="wrap">
+      <div class="grid" style="display:grid; grid-template-columns: minmax(0,3fr) minmax(0,2fr); gap:clamp(28px,5vw,60px); align-items:start;">
+        <div>
+          <p class="kicker">The system, briefly</p>
+          <h2>How FIDE ratings work.</h2>
+          <div class="prose prose-cols">
+            <p class="dropcap">
+              A FIDE rating is a running estimate of your strength, updated after every rated
+              game by one small subtraction. Before the game, the system computes your
+              <em> expected score</em> E - the share of points you should take, draws counted
+              as half. After the game it compares that expectation with the points you actually
+              scored S, and pays you the difference times a coefficient K.
+            </p>
+            <p>
+              The expectation comes from the logistic curve Arpad Elo popularised: at equal
+              ratings E = 0.50; 100 points up, E = 0.64; 200 up, E = 0.76; and every 400
+              points multiply your expected score tenfold. FIDE publishes these values as its
+              official Table 8.1.2 and reads them off in 2-decimal steps<span class="cite">[<a href="/about#f1">F1</a>]</span>.
+            </p>
+            <p>
+              The coefficient K is the throttle. New players (fewer than 30 rated games) and
+              juniors under 18 (while below 2300) move at K = 40 - a win against an equal is
+              worth +20. Established players under 2400 sit at K = 20 (+10 for that win), and
+              anyone who has touched 2400 is permanently at K = 10, where the same win pays
+              just +5<span class="cite">[<a href="/about#f1">F1</a>]</span>.
+            </p>
+            <p>
+              One guard-rail keeps mismatches honest: for players rated below 2650, a rating
+              difference of more than 400 points is counted as exactly 400 (art. 8.3.1, as
+              amended from 1 October 2025). Losing to a super-grandmaster costs the same as
+              losing to someone 400 points above you - no more, no less.
+            </p>
+          </div>
+        </div>
+        <div>
+          <div class="plate">
+            <p class="plate__tag">The whole engine</p>
+            <p class="equation">
+              <i>E</i> = 1 / (1 + 10<sup>(<i>R</i><sub>opp</sub> − <i>R</i><sub>you</sub>)/400</sup>)
+            </p>
+            <p class="equation" style="border-top:1px solid var(--line-soft); margin-top:8px; padding-top:14px;">
+              Δ<i>R</i> = <i>K</i> × (<i>S</i> − <i>E</i>)
+            </p>
+            <p class="plate__note">
+              S is your game score - 1, ½ or 0. Example: 2000 beats 2000 with K = 20 →
+              ΔR = 20 × (1 − 0.50) = <strong>+10</strong>.
+            </p>
+          </div>
+          <div class="note">
+            <span class="note__tag">Field note</span>
+            <p>
+              Ratings are recalculated once per rating period (roughly monthly), not game by
+              game - but each game's contribution is exactly the sum above. Our calculators
+              simulate sequentially so you can watch the ladder climb.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= FAQ ================= -->
+  <section class="section rule-double">
+    <div class="wrap-narrow">
+      <p class="kicker">Questions players actually ask</p>
+      <h2>Rating FAQ.</h2>
+      <Faq items={faqs.filter((f) => homeFaqs.includes(f.id))} open="k-factor" />
+      <p style="margin-top:26px;">
+        <a class="btn btn--ghost" href="/faq">All ten questions →</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- ================= SOURCES ================= -->
+  <section class="section rule-top">
+    <div class="wrap">
+      <p class="kicker">Sourced from the rulebook</p>
+      <h2>Standards &amp; citations.</h2>
+      <ul class="sourcelist">
+        {sources.map((s) => (
+          <li data-no={s.no}>
+            <a href={s.url} rel="noopener" target="_blank">{s.title}</a>
+            <span class="figure-small" style="display:block; margin-top:3px;">{s.note}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+</BaseLayout>
